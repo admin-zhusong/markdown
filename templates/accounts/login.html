@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}登录 - Markdown编辑器{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">用户登录</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        <div class="mb-3">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.errors %}
+                            {% for error in field.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary btn-block mt-3">登录</button>
+                    </form>
+                    <div class="mt-3 text-center">
+                        <a href="{% url 'forget_password' %}">忘记密码？</a>
+                        <span class="mx-2">|</span>
+                        <a href="{% url 'register' %}">还没有账号？立即注册</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

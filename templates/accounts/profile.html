@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}个人中心 - Markdown编辑器{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3>个人信息</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">用户名</label>
+                            <input type="text" class="form-control" name="username" value="{{ user.username }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">邮箱</label>
+                            <input type="email" class="form-control" name="email" value="{{ user.email }}">
+                        </div>
+                        <button type="submit" class="btn btn-primary">保存修改</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3>账号安全</h3>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'change_password' %}" class="btn btn-outline-primary flex-1">修改密码</a>
+                        <a href="{% url 'delete_account' %}" class="btn btn-outline-danger flex-1">注销账号</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3>统计信息</h3>
+                </div>
+                <div class="card-body">
+                    <p><strong>注册时间：</strong>{{ user.date_joined|date:"Y-m-d H:i" }}</p>
+                    <p><strong>文档数量：</strong>{{ document_count }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

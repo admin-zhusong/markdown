@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}注销账号 - Markdown编辑器{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="text-center">注销账号</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <strong>警告！</strong>此操作将永久删除您的账号及所有文档，且无法恢复。
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">请输入密码以确认注销</label>
+                            <input type="password" class="form-control" name="password" required placeholder="输入密码">
+                        </div>
+                        <button type="submit" class="btn btn-danger btn-block">确认注销</button>
+                    </form>
+                    <a href="{% url 'profile' %}" class="btn btn-secondary btn-block mt-2">返回个人中心</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

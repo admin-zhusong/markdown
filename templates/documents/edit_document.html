@@ -1,0 +1,559 @@
+{% extends 'base.html' %}
+
+{% block title %}编辑文档 - {{ document.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .editor-wrapper {
+        display: flex;
+        height: calc(100vh - 70px);
+        margin-top: 70px;
+        background: #fff;
+        overflow: hidden;
+        position: relative;
+    }
+    .editor-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #e5e7eb;
+        background: #fff;
+        min-height: 0;
+    }
+    .preview-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #fafafa;
+        min-height: 0;
+    }
+    .editor-header {
+        padding: 14px 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2);
+    }
+    .editor-title-input {
+        flex: 1;
+        font-size: 1.25rem;
+        font-weight: 600;
+        border: none;
+        background: transparent;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        max-width: 60%;
+    }
+    .editor-title-input::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+    }
+    .editor-title-input:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.15);
+    }
+    .toolbar-section {
+        padding: 10px 20px;
+        background: #f8fafc;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+    .toolbar-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        color: #374151;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-weight: 500;
+    }
+    .toolbar-btn:hover {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: transparent;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+    .toolbar-btn:active {
+        transform: translateY(0);
+    }
+    .toolbar-divider {
+        width: 1px;
+        height: 26px;
+        background: #e5e7eb;
+        margin: 0 8px;
+    }
+    .editor-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    #document-form {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    .editor-area {
+        flex: 1;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .editor-textarea {
+        width: 100%;
+        height: 100%;
+        border: none;
+        outline: none;
+        resize: none;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+        font-size: 15px;
+        line-height: 1.8;
+        padding: 24px;
+        background: #fff;
+        color: #1f2937;
+        tab-size: 4;
+    }
+    .editor-textarea::placeholder {
+        color: #9ca3af;
+    }
+    .preview-header {
+        padding: 14px 24px;
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        color: #374151;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .preview-header .badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 5px 12px;
+        border-radius: 16px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .preview-content-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+    }
+    .preview-content {
+        padding: 28px 32px;
+        background: #fff;
+    }
+    .preview-content h1 { 
+        font-size: 2em; 
+        border-bottom: 2px solid #667eea; 
+        padding-bottom: 12px; 
+        margin-bottom: 24px; 
+        color: #1f2937;
+        font-weight: 700;
+    }
+    .preview-content h2 { 
+        font-size: 1.5em; 
+        border-bottom: 1px solid #e5e7eb; 
+        padding-bottom: 8px; 
+        margin: 28px 0 16px; 
+        color: #374151;
+        font-weight: 600;
+    }
+    .preview-content h3 { 
+        font-size: 1.25em; 
+        margin: 22px 0 12px; 
+        color: #4b5563;
+        font-weight: 600;
+    }
+    .preview-content h4 { 
+        font-size: 1.1em; 
+        margin: 18px 0 10px; 
+        color: #6b7280;
+        font-weight: 600;
+    }
+    .preview-content p { 
+        line-height: 1.8; 
+        margin: 16px 0; 
+        color: #374151;
+    }
+    .preview-content pre {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 10px;
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        margin: 18px 0;
+    }
+    .preview-content code {
+        background: #f3f4f6;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+        font-size: 0.9em;
+        color: #e83e8c;
+    }
+    .preview-content pre code {
+        background: none;
+        padding: 0;
+        color: #374151;
+    }
+    .preview-content blockquote {
+        border-left: 4px solid #667eea;
+        margin: 18px 0;
+        padding: 14px 20px;
+        background: #f8f9ff;
+        color: #4b5563;
+        border-radius: 0 8px 8px 0;
+    }
+    .preview-content ul, .preview-content ol {
+        margin: 16px 0;
+        padding-left: 28px;
+    }
+    .preview-content li {
+        line-height: 1.8;
+        margin: 6px 0;
+        color: #374151;
+    }
+    .preview-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 18px 0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .preview-content th, .preview-content td {
+        border: 1px solid #e5e7eb;
+        padding: 12px 16px;
+        text-align: left;
+    }
+    .preview-content th {
+        background: #f8fafc;
+        font-weight: 600;
+        color: #374151;
+    }
+    .preview-content tr:nth-child(even) {
+        background: #fafafa;
+    }
+    .preview-content tr:hover {
+        background: #f3f4f6;
+    }
+    .preview-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 10px;
+        margin: 18px 0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .preview-content a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .preview-content a:hover {
+        text-decoration: underline;
+    }
+    .preview-content hr {
+        border: none;
+        border-top: 2px solid #e5e7eb;
+        margin: 28px 0;
+    }
+    .action-bar {
+        padding: 12px 24px;
+        background: white;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        bottom: 0;
+        z-index: 100;
+        flex-shrink: 0;
+    }
+    .save-indicator {
+        font-size: 13px;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .save-indicator .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+    }
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+    }
+    .status-bar {
+        padding: 8px 24px;
+        background: #f8fafc;
+        border-top: 1px solid #e5e7eb;
+        font-size: 12px;
+        color: #6b7280;
+        display: flex;
+        justify-content: space-between;
+    }
+    .tags-input {
+        padding: 12px 24px;
+        border-top: 1px solid #e5e7eb;
+        background: #fafafa;
+    }
+    .tags-input input {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        font-size: 14px;
+        color: #374151;
+    }
+    .tags-input input::placeholder {
+        color: #9ca3af;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="editor-wrapper">
+    <div class="editor-panel">
+        <div class="editor-header">
+            <a href="{% url 'my_documents' %}{% if document.folder %}?folder={{ document.folder.id }}{% endif %}" class="btn bg-white/20 hover:bg-white/30 text-white btn-sm mr-3 px-4 py-2 rounded-lg transition-all">
+                <i class="fas fa-arrow-left mr-1"></i> 返回上一级
+            </a>
+            <input type="text" name="title" id="document-title" class="editor-title-input" value="{{ document.title }}" placeholder="请输入文档标题...">
+        </div>
+
+        <div class="toolbar-section">
+            <button class="toolbar-btn" onclick="insertMarkdown('# ', '', '标题1')"><i class="fas fa-heading"></i> H1</button>
+            <button class="toolbar-btn" onclick="insertMarkdown('## ', '', '标题2')"><i class="fas fa-heading"></i> H2</button>
+            <button class="toolbar-btn" onclick="insertMarkdown('### ', '', '标题3')"><i class="fas fa-heading"></i> H3</button>
+
+            <div class="toolbar-divider"></div>
+
+            <button class="toolbar-btn" onclick="insertMarkdown('**', '**', '粗体')"><i class="fas fa-bold"></i> 粗体</button>
+            <button class="toolbar-btn" onclick="insertMarkdown('*', '*', '斜体')"><i class="fas fa-italic"></i> 斜体</button>
+            <button class="toolbar-btn" onclick="insertMarkdown('~~', '~~', '删除线')"><i class="fas fa-strikethrough"></i> 删除线</button>
+
+            <div class="toolbar-divider"></div>
+
+            <button class="toolbar-btn" onclick="insertMarkdown('- ', '', '列表项')"><i class="fas fa-list-ul"></i> 无序列表</button>
+            <button class="toolbar-btn" onclick="insertMarkdown('1. ', '', '列表项')"><i class="fas fa-list-ol"></i> 有序列表</button>
+            <button class="toolbar-btn" onclick="insertMarkdown('> ', '', '引用')"><i class="fas fa-quote-right"></i> 引用</button>
+
+            <div class="toolbar-divider"></div>
+
+            <button class="toolbar-btn" onclick="insertMarkdown('```\n', '\n```', '代码块')"><i class="fas fa-code"></i> 代码块</button>
+            <button class="toolbar-btn" onclick="insertMarkdown('`', '`', '行内代码')"><i class="fas fa-code"></i> 行内代码</button>
+
+            <div class="toolbar-divider"></div>
+
+            <button class="toolbar-btn" onclick="insertMarkdown('[链接文字](', ')', 'URL')"><i class="fas fa-link"></i> 链接</button>
+            <button class="toolbar-btn" onclick="insertMarkdown('![图片描述](', ')', '图片URL')"><i class="fas fa-image"></i> 图片</button>
+            <button class="toolbar-btn" onclick="insertTable()"><i class="fas fa-table"></i> 表格</button>
+
+            <div class="toolbar-divider"></div>
+
+            <button class="toolbar-btn" onclick="insertMarkdown('---\n', '', '分割线')"><i class="fas fa-minus"></i> 分割线</button>
+            <button class="toolbar-btn" onclick="insertMarkdown('- [ ] ', '', '任务列表')"><i class="fas fa-check-square"></i> 任务</button>
+        </div>
+
+        <form id="document-form" method="post" class="editor-content">
+            {% csrf_token %}
+            <input type="hidden" name="title" id="document-title-hidden" value="{{ document.title }}">
+            {% if document.folder %}
+            <input type="hidden" name="folder" value="{{ document.folder.id }}">
+            {% endif %}
+            <div class="editor-area">
+                <textarea id="editor-textarea" name="content" class="editor-textarea" placeholder="开始编写您的Markdown文档...">{{ document.content }}</textarea>
+            </div>
+            <div class="tags-input">
+                <input type="text" name="tags" id="document-tags" value="{{ document.tags }}" placeholder="标签，用逗号分隔">
+            </div>
+        </form>
+
+        <div class="status-bar">
+            <span>字符数：<span id="char-count">0</span> | 字数：<span id="word-count">0</span></span>
+            <span>自动保存：30秒</span>
+        </div>
+    </div>
+
+    <div class="preview-panel">
+        <div class="preview-header">
+            <span><i class="fas fa-eye me-2"></i>实时预览</span>
+            <span class="badge">Markdown</span>
+        </div>
+        <div class="preview-content-wrapper">
+            <div class="preview-content" id="preview-content">
+                {{ document.content|safe }}
+            </div>
+        </div>
+        <div class="action-bar">
+            <div class="save-indicator">
+                <span class="dot"></span>
+                <span id="save-indicator">已保存</span>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-outline-secondary btn-sm" onclick="toggleFullscreen()">
+                    <i class="fas fa-expand"></i> 全屏
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="saveDocument()">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+                <a href="{% url 'my_documents' %}{% if document.folder %}?folder={{ document.folder.id }}{% endif %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> 返回
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="export-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">导出文档</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>选择导出格式：</p>
+                <a href="{% url 'export_document' document_id=document.id %}?format=md" class="btn btn-primary btn-block mb-2">
+                    <i class="fas fa-file-alt"></i> Markdown (.md)
+                </a>
+                <a href="{% url 'export_document' document_id=document.id %}?format=html" class="btn btn-success btn-block mb-2">
+                    <i class="fas fa-file-code"></i> HTML (.html)
+                </a>
+                <a href="{% url 'export_document' document_id=document.id %}?format=pdf" class="btn btn-info btn-block">
+                    <i class="fas fa-file-pdf"></i> PDF (.pdf)
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const textarea = document.getElementById('editor-textarea');
+const preview = document.getElementById('preview-content');
+const saveIndicator = document.getElementById('save-indicator');
+const documentForm = document.getElementById('document-form');
+let contentChanged = false;
+let autosaveTimer = null;
+
+function updatePreview() {
+    const content = textarea.value;
+    fetch('/api/preview/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: 'content=' + encodeURIComponent(content)
+    }).then(response => response.text()).then(html => {
+        preview.innerHTML = html;
+    });
+    contentChanged = true;
+    updateCounts();
+}
+
+function updateCounts() {
+    const content = textarea.value;
+    document.getElementById('char-count').textContent = content.length;
+    const words = content.trim().split(/\s+/).filter(w => w.length > 0).length;
+    document.getElementById('word-count').textContent = words;
+}
+
+function insertMarkdown(prefix, suffix = '', placeholder = '') {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    const textToInsert = prefix + (selectedText || placeholder) + suffix;
+
+    textarea.value = textarea.value.substring(0, start) + textToInsert + textarea.value.substring(end);
+
+    if (selectedText) {
+        textarea.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
+    } else {
+        const pos = start + prefix.length;
+        textarea.setSelectionRange(pos, pos + placeholder.length);
+    }
+
+    textarea.focus();
+    updatePreview();
+}
+
+function insertTable() {
+    const table = `| 列1 | 列2 | 列3 |
+|-----|-----|-----|
+| 单元格1 | 单元格2 | 单元格3 |
+| 单元格4 | 单元格5 | 单元格6 |
+`;
+    const start = textarea.selectionStart;
+    textarea.value = textarea.value.substring(0, start) + table + textarea.value.substring(start);
+    textarea.focus();
+    updatePreview();
+}
+
+function saveDocument() {
+    const titleInput = document.getElementById('document-title');
+    const titleHidden = document.getElementById('document-title-hidden');
+    titleHidden.value = titleInput.value;
+    
+    saveIndicator.innerHTML = '<span class="dot" style="background: #ffc107;"></span> 保存中...';
+    documentForm.submit();
+}
+
+function autosave() {
+    if (contentChanged) {
+        saveIndicator.innerHTML = '<span class="dot" style="background: #ffc107;"></span> 自动保存中...';
+        fetch('/api/autosave/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: 'document_id={{ document.id }}&content=' + encodeURIComponent(textarea.value)
+        }).then(response => response.json()).then(data => {
+            if (data.status === 'success') {
+                saveIndicator.innerHTML = '<span class="dot"></span> 已自动保存';
+                contentChanged = false;
+            }
+        });
+    }
+}
+
+function toggleFullscreen() {
+    const editorWrapper = document.querySelector('.editor-wrapper');
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else {
+        editorWrapper.requestFullscreen();
+    }
+}
+
+textarea.addEventListener('input', updatePreview);
+textarea.addEventListener('input', function() {
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(autosave, 30000);
+});
+
+updatePreview();
+updateCounts();
+</script>
+{% endblock %}

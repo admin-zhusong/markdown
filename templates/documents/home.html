@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+
+{% block title %}首页 - Markdown编辑器{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="jumbotron mt-5">
+        <h1 class="display-4">欢迎使用 Markdown 编辑器</h1>
+        <p class="lead">简洁、高效、功能全面的在线Markdown编辑工具</p>
+        <hr class="my-4">
+        <p>支持实时预览、文件保存、版本管理、分享导出等功能</p>
+        <div class="mt-4">
+            {% if user.is_authenticated %}
+            <a class="btn btn-primary btn-lg" href="{% url 'my_documents' %}" role="button">
+                <i class="fas fa-folder-open"></i> 我的文档
+            </a>
+            <a class="btn btn-success btn-lg" href="{% url 'create_document' %}" role="button">
+                <i class="fas fa-file-plus"></i> 新建文档
+            </a>
+            {% else %}
+            <a class="btn btn-primary btn-lg" href="{% url 'login' %}" role="button">
+                <i class="fas fa-sign-in-alt"></i> 登录
+            </a>
+            <a class="btn btn-success btn-lg" href="{% url 'register' %}" role="button">
+                <i class="fas fa-user-plus"></i> 注册
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-eye fa-3x text-primary mb-3"></i>
+                    <h3 class="card-title">实时预览</h3>
+                    <p class="card-text">编辑与预览同步更新，无明显延迟</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-save fa-3x text-success mb-3"></i>
+                    <h3 class="card-title">自动保存</h3>
+                    <p class="card-text">每30秒自动保存，避免内容丢失</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fas fa-share-alt fa-3x text-info mb-3"></i>
+                    <h3 class="card-title">分享导出</h3>
+                    <p class="card-text">支持PDF、HTML、Markdown多种格式导出</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-5">
+        <h2>Markdown 语法示例</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <h4>输入</h4>
+                <pre class="bg-light p-3 rounded">{{ markdown_example }}</pre>
+            </div>
+            <div class="col-md-6">
+                <h4>预览效果</h4>
+                <div class="preview-panel">
+                    {{ markdown_preview|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const markdownExample = `# 标题一级
+
+## 标题二级
+
+**粗体文本** 和 *斜体文本*
+
+> 这是一段引用
+
+- 无序列表项1
+- 无序列表项2
+
+1. 有序列表项1
+2. 有序列表项2
+
+\`\`\`python
+def hello():
+    print("Hello World")
+\`\`\`
+
+| 姓名 | 年龄 | 城市 |
+|------|------|------|
+| 张三 | 25 | 北京 |
+| 李四 | 30 | 上海 |
+
+[链接文字](https://example.com)
+
+![图片描述](https://via.placeholder.com/150)`;
+
+document.querySelector('pre').textContent = markdownExample;
+</script>
+{% endblock %}

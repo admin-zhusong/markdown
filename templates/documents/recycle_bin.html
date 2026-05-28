@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+
+{% block title %}回收站 - Markdown编辑器{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between mb-3">
+                <h2>回收站</h2>
+                <div class="d-flex gap-2">
+                    {% if documents %}
+                    <button type="button" class="btn btn-danger" onclick="batchDelete()" id="batch-delete-btn" disabled>
+                        <i class="fas fa-trash"></i> 批量删除
+                    </button>
+                    {% endif %}
+                    <a href="{% url 'my_documents' %}" class="btn btn-secondary">返回文档列表</a>
+                </div>
+            </div>
+
+            {% if documents %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>
+                                <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                            </th>
+                            <th>文档标题</th>
+                            <th>删除时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for document in documents %}
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="document-checkbox" value="{{ document.id }}">
+                            </td>
+                            <td>{{ document.title }}</td>
+                            <td>{{ document.delete_time|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                <a href="{% url 'restore_document' document_id=document.id %}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-undo"></i> 恢复
+                                </a>
+                                <a href="{% url 'delete_permanently' document_id=document.id %}" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i> 永久删除
+                            </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-trash fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">回收站是空的</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.document-checkbox');
+    const selectAll = document.getElementById('select-all');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    updateBatchDeleteButton();
+}
+
+function updateBatchDeleteButton() {
+    const checkboxes = document.querySelectorAll('.document-checkbox:checked');
+    const batchDeleteBtn = document.getElementById('batch-delete-btn');
+    batchDeleteBtn.disabled = checkboxes.length === 0;
+}
+
+document.querySelectorAll('.document-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateBatchDeleteButton);
+});
+
+function batchDelete() {
+    const checkedBoxes = document.querySelectorAll('.document-checkbox:checked');
+    const documentIds = Array.from(checkedBoxes).map(box => box.value);
+    
+    if (documentIds.length === 0) {
+        alert('请选择要删除的文档');
+        return;
+    }
+    
+    fetch('{% url "batch_delete_permanently" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ document_ids: documentIds })
+    }).then(response => {
+        window.location.reload();
+    }).catch(error => {
+        alert('删除失败: ' + error.message);
+    });
+}
+</script>
+{% endblock %}

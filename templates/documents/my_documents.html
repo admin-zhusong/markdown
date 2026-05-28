@@ -1,0 +1,2172 @@
+{% extends 'base.html' %}
+
+{% block title %}我的文档 - Markdown编辑器{% endblock %}
+
+{% block content %}
+<form id="csrf-form" style="display: none;">{% csrf_token %}</form>
+
+<style>
+    :root {
+        --primary-color: #667eea;
+        --primary-dark: #5a6fd6;
+        --secondary-color: #764ba2;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --info-color: #3b82f6;
+        --bg-gray: #f8fafc;
+        --text-primary: #1f2937;
+        --text-secondary: #6b7280;
+        --text-muted: #9ca3af;
+        --border-color: #e5e7eb;
+    }
+
+    .app-container {
+        display: flex;
+        min-height: calc(100vh - 60px);
+        padding-top: 60px;
+    }
+
+    .sidebar {
+        width: 240px;
+        flex-shrink: 0;
+        background: white;
+        border-right: 1px solid var(--border-color);
+        padding: 16px;
+        position: fixed;
+        top: 60px;
+        left: 0;
+        height: calc(100vh - 60px);
+        overflow-y: auto;
+    }
+
+    .main-content {
+        flex: 1;
+        margin-left: 240px;
+        padding: 20px 24px;
+        background: var(--bg-gray);
+        min-height: calc(100vh - 60px);
+    }
+
+    .sidebar-section {
+        margin-bottom: 20px;
+    }
+
+    .sidebar-section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .tag-filter-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: none;
+        background: transparent;
+        color: var(--text-primary);
+        font-size: 14px;
+        margin-bottom: 4px;
+        transition: all 0.2s ease;
+        position: relative;
+        padding-left: 28px;
+    }
+
+    .tag-filter-btn:hover {
+        background: rgba(102, 126, 234, 0.08);
+    }
+
+    .tag-filter-btn.active {
+        background: rgba(102, 126, 234, 0.12);
+        font-weight: 600;
+    }
+
+    .tag-filter-btn.active::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 16px;
+        background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+        border-radius: 0 2px 2px 0;
+    }
+
+    .tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .tag-chip {
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 12px;
+        background: rgba(102, 126, 234, 0.1);
+        color: var(--primary-color);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .tag-chip:hover {
+        background: rgba(102, 126, 234, 0.2);
+    }
+
+    .tag-chip.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .empty-tags {
+        text-align: center;
+        padding: 16px;
+        color: var(--text-muted);
+        font-size: 13px;
+    }
+
+    .empty-tags-icon {
+        display: block;
+        font-size: 24px;
+        margin-bottom: 8px;
+        opacity: 0.5;
+    }
+
+    .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, var(--success-color), #059669);
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary-custom:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-secondary-custom {
+        background: linear-gradient(135deg, var(--info-color), #2563eb);
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary-custom:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-tertiary-custom {
+        background: white;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-tertiary-custom:hover {
+        background: var(--bg-gray);
+        border-color: var(--text-muted);
+    }
+
+    .search-bar {
+        margin-bottom: 20px;
+    }
+
+    .search-input-wrapper {
+        display: flex;
+        align-items: center;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+
+    .search-input-wrapper:focus-within {
+        border-color: var(--primary-color);
+        box-shadow: 0 2px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .search-icon {
+        padding: 12px 16px;
+        color: var(--text-muted);
+        font-size: 16px;
+    }
+
+    .search-input {
+        flex: 1;
+        border: none;
+        outline: none;
+        padding: 12px 16px;
+        font-size: 14px;
+        background: transparent;
+    }
+
+    .search-input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .search-btn {
+        padding: 12px 20px;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .search-btn:hover {
+        opacity: 0.9;
+    }
+
+    .toolbar-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .toolbar-actions-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .toolbar-actions-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .select-all-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .select-all-checkbox input {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+
+    .document-count {
+        font-size: 14px;
+        color: var(--text-muted);
+    }
+
+    .document-count strong {
+        color: var(--text-primary);
+    }
+
+    .btn-batch-delete {
+        background: transparent;
+        color: var(--danger-color);
+        border: 1px solid var(--danger-color);
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s ease;
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-batch-delete.enabled {
+        opacity: 1;
+        cursor: pointer;
+    }
+
+    .btn-batch-delete.enabled:hover {
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    .view-toggle {
+        display: flex;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .view-toggle-btn {
+        padding: 6px 12px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: var(--text-muted);
+    }
+
+    .view-toggle-btn.active {
+        background: rgba(102, 126, 234, 0.1);
+        color: var(--primary-color);
+    }
+
+    .breadcrumb-container {
+        background: white;
+        padding: 10px 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        border: 1px solid var(--border-color);
+    }
+
+    .breadcrumb {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .breadcrumb-item {
+        display: flex;
+        align-items: center;
+    }
+
+    .breadcrumb-item a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .breadcrumb-item a:hover {
+        text-decoration: underline;
+    }
+
+    .breadcrumb-item.active {
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    .breadcrumb-separator {
+        color: var(--text-muted);
+        margin: 0 4px;
+    }
+
+    .folders-section {
+        margin-bottom: 20px;
+    }
+
+    .folders-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .folders-section {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .folders-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .folders-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .folder-card {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 16px;
+        min-width: 200px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        position: relative;
+        --hover-color: rgba(251, 191, 36, 0.15);
+        --hover-border: rgba(251, 191, 36, 0.4);
+    }
+
+    .folder-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        border-color: var(--hover-border);
+        background: var(--hover-color);
+        transform: translateY(-2px);
+    }
+
+    .folder-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .folder-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 14px;
+        cursor: pointer;
+        flex: 1;
+    }
+
+    .folder-icon {
+        font-size: 20px;
+        color: #f59e0b;
+    }
+
+    .folder-actions {
+        transition: all 0.2s ease;
+    }
+
+    .folder-action-btn {
+        background: rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: all 0.2s ease;
+        font-size: 14px;
+        min-width: 32px;
+        text-align: center;
+    }
+
+    .folder-action-btn:hover {
+        background: rgba(102, 126, 234, 0.1);
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .custom-dropdown {
+        position: relative;
+    }
+
+    .custom-dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: 4px;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        min-width: 140px;
+        z-index: 1000;
+        overflow: hidden;
+    }
+
+    .custom-dropdown-menu.show {
+        display: block;
+    }
+
+    .custom-dropdown-item {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 8px 12px;
+        background: none;
+        border: none;
+        text-align: left;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--text-secondary);
+        transition: all 0.2s ease;
+    }
+
+    .custom-dropdown-item:hover {
+        background: rgba(102, 126, 234, 0.08);
+        color: var(--primary-color);
+    }
+
+    .custom-dropdown-item.text-danger:hover {
+        background: rgba(239, 68, 68, 0.08);
+        color: #ef4444;
+    }
+
+    .simple-dropdown {
+        position: relative;
+        z-index: 10;
+    }
+
+    .simple-dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 8px);
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        min-width: 140px;
+        overflow: hidden;
+        z-index: 1000;
+    }
+
+    .simple-dropdown-menu.active {
+        display: block;
+    }
+
+    .simple-dropdown-item {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 10px 14px;
+        background: none;
+        border: none;
+        text-align: left;
+        cursor: pointer;
+        font-size: 14px;
+        color: #4b5563;
+        transition: all 0.15s ease;
+    }
+
+    .simple-dropdown-item:hover {
+        background: rgba(102, 126, 234, 0.08);
+        color: #667eea;
+    }
+
+    .simple-dropdown-item.danger:hover {
+        background: rgba(239, 68, 68, 0.08);
+        color: #ef4444;
+    }
+
+    .custom-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .custom-modal-overlay.show {
+        display: flex;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .custom-modal {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+        width: 90%;
+        max-width: 420px;
+        overflow: hidden;
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .custom-modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .custom-modal-title {
+        color: white;
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .custom-modal-close {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .custom-modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .custom-modal-body {
+        padding: 24px;
+    }
+
+    .custom-modal-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 8px;
+    }
+
+    .custom-modal-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 15px;
+        color: #1f2937;
+        outline: none;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .custom-modal-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    }
+
+    .custom-modal-footer {
+        padding: 16px 24px;
+        background: #f9fafb;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+
+    .custom-modal-btn {
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .custom-modal-btn.cancel {
+        background: #e5e7eb;
+        color: #4b5563;
+    }
+
+    .custom-modal-btn.cancel:hover {
+        background: #d1d5db;
+    }
+
+    .custom-modal-btn.confirm {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .custom-modal-btn.confirm:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .folder-date {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 8px;
+    }
+
+    .documents-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+        margin-top: 20px;
+    }
+
+    .documents-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .document-card {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 16px;
+        transition: all 0.2s ease;
+        position: relative;
+        --hover-color: rgba(102, 126, 234, 0.1);
+        --hover-border: rgba(102, 126, 234, 0.3);
+    }
+
+    .document-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border-color: var(--hover-border);
+        background: var(--hover-color);
+        transform: translateY(-2px);
+    }
+
+    .document-card-list {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .document-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .document-checkbox {
+        margin-top: 4px;
+        cursor: pointer;
+    }
+
+    .document-title {
+        flex: 1;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 15px;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    .document-title:hover {
+        color: var(--primary-color);
+    }
+
+    .document-extension {
+        font-size: 11px;
+        color: #667eea;
+        font-weight: 600;
+        padding: 4px 10px;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border: 1.5px solid rgba(102, 126, 234, 0.25);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        text-decoration: none;
+        letter-spacing: 0.5px;
+        box-shadow: 0 1px 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .document-extension:hover {
+        color: white;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+        transform: translateY(-1px);
+    }
+
+    .document-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 12px;
+    }
+
+    .document-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .document-meta-item i {
+        font-size: 11px;
+    }
+
+    .document-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .document-tag {
+        padding: 3px 8px;
+        font-size: 11px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(59, 130, 246, 0.15));
+        color: #0e7490;
+    }
+
+    .document-actions {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        opacity: 1;
+        transition: all 0.2s ease;
+    }
+
+    .document-action-btn {
+        background: transparent;
+        border: none;
+        padding: 5px;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-muted);
+        transition: all 0.2s ease;
+    }
+
+    .document-action-btn:hover {
+        background: var(--bg-gray);
+        color: var(--text-primary);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .empty-state-icon {
+        width: 64px;
+        height: 64px;
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        font-size: 32px;
+        color: var(--primary-color);
+    }
+
+    .empty-state-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+
+    .empty-state-desc {
+        color: var(--text-muted);
+        margin-bottom: 16px;
+    }
+
+    .drawer-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .drawer-overlay.open {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .drawer-panel {
+        position: fixed;
+        top: 0;
+        right: -400px;
+        width: 400px;
+        height: 100vh;
+        background: white;
+        z-index: 1001;
+        transition: right 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
+    }
+
+    .drawer-overlay.open .drawer-panel {
+        right: 0;
+    }
+
+    .drawer-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .drawer-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .drawer-close-btn {
+        background: transparent;
+        border: none;
+        padding: 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-muted);
+        transition: all 0.2s ease;
+    }
+
+    .drawer-close-btn:hover {
+        background: var(--bg-gray);
+        color: var(--text-primary);
+    }
+
+    .drawer-content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .curl-tool-section {
+        margin-bottom: 20px;
+    }
+
+    .curl-tool-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .curl-tool-textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 13px;
+        resize: vertical;
+        background: var(--bg-gray);
+        transition: all 0.2s ease;
+        min-height: 100px;
+    }
+
+    .curl-tool-textarea:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn-convert {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-convert:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-convert:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-copy {
+        width: 100%;
+        padding: 10px;
+        background: white;
+        color: var(--success-color);
+        border: 1px solid var(--success-color);
+        border-radius: 8px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-copy:hover {
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .btn-clear {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-clear:hover {
+        color: var(--danger-color);
+    }
+
+    .label-with-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 14px 20px;
+        border-radius: 10px;
+        color: white;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.3s ease;
+        z-index: 2000;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .toast-success {
+        background: linear-gradient(135deg, var(--success-color), #059669);
+    }
+
+    .toast-error {
+        background: linear-gradient(135deg, var(--danger-color), #dc2626);
+    }
+
+    @media (max-width: 768px) {
+        .sidebar {
+            display: none;
+        }
+
+        .main-content {
+            margin-left: 0;
+            padding: 16px;
+        }
+
+        .toolbar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .toolbar-left,
+        .toolbar-right {
+            justify-content: center;
+        }
+
+        .documents-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <i class="fas fa-folder-open"></i>
+                <span>文档筛选</span>
+            </div>
+            <a href="{% url 'my_documents' %}" class="tag-filter-btn {% if not tag_filter %}active{% endif %}">
+                <i class="fas fa-list mr-2"></i>全部文档
+            </a>
+            {% if tag_filter %}
+            <div class="mb-3 p-2 bg-primary/10 rounded-lg text-center">
+                <small class="text-muted">当前筛选：</small>
+                <span class="badge bg-primary">{{ tag_filter }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <i class="fas fa-tags"></i>
+                <span>标签</span>
+            </div>
+            {% if all_tags %}
+            <div class="tags-container">
+                {% for tag in all_tags %}
+                <button class="tag-chip {% if tag_filter == tag %}active{% endif %}" 
+                        onclick="window.location.href='?tag={{ tag }}{% if current_folder %}&folder={{ current_folder.id }}{% endif %}'">
+                    {{ tag }}
+                </button>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-tags">
+                <i class="fas fa-tags empty-tags-icon"></i>
+                <div>给文档添加标签</div>
+                <div>方便快速筛选</div>
+            </div>
+            {% endif %}
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-file-alt text-primary"></i> 我的文档</h2>
+            </div>
+            <div class="toolbar-right">
+                <a href="{% url 'create_document' %}{% if current_folder %}?folder={{ current_folder.id }}{% endif %}" 
+                   class="btn-primary-custom">
+                    <i class="fas fa-file-plus"></i> 新建文档
+                </a>
+                <button type="button" class="btn-secondary-custom" data-bs-toggle="modal" data-bs-target="#import-modal">
+                    <i class="fas fa-upload"></i> 导入文件
+                </button>
+                <button type="button" class="btn-tertiary-custom" data-bs-toggle="modal" data-bs-target="#create-folder-modal">
+                    <i class="fas fa-folder-plus"></i> 新建文件夹
+                </button>
+                <button type="button" class="btn-tertiary-custom" onclick="openToolDrawer()">
+                    <i class="fas fa-wrench"></i> 工具
+                </button>
+            </div>
+        </div>
+
+        {% if folder_path or current_folder %}
+        <div class="breadcrumb-container">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'my_documents' %}">
+                        <i class="fas fa-home"></i> 我的文档
+                    </a>
+                </li>
+                {% for folder in folder_path %}
+                {% if folder == current_folder %}
+                <li class="breadcrumb-item active">{{ folder.name }}</li>
+                {% else %}
+                <li class="breadcrumb-item">
+                    <span class="breadcrumb-separator">/</span>
+                    <a href="{% url 'my_documents' %}?folder={{ folder.id }}">{{ folder.name }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+            </ol>
+        </div>
+        {% endif %}
+
+        <div class="search-bar">
+            <form method="get" class="search-input-wrapper">
+                {% if tag_filter %}
+                <input type="hidden" name="tag" value="{{ tag_filter }}">
+                {% endif %}
+                {% if current_folder %}
+                <input type="hidden" name="folder" value="{{ current_folder.id }}">
+                {% endif %}
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="search-input" name="search" 
+                       placeholder="搜索文档标题、内容或标签... (Ctrl+K)" 
+                       value="{{ search_query }}" id="search-input">
+                <button type="submit" class="search-btn">搜索</button>
+            </form>
+        </div>
+
+        <div class="toolbar-actions">
+            <div class="toolbar-actions-left">
+                <label class="select-all-checkbox">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
+                    <span>全选</span>
+                </label>
+                <span class="document-count">
+                    共 <strong>{{ documents|length }}</strong> 个文档
+                    {% if tag_filter %}
+                    <span class="badge bg-primary ms-2">{{ tag_filter }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="toolbar-actions-right">
+                <button type="button" class="btn-batch-delete" id="batch-delete-btn" onclick="batchDeleteDocuments()">
+                    <i class="fas fa-trash"></i> 批量删除
+                </button>
+                <div class="view-toggle">
+                    <button class="view-toggle-btn active" id="view-card" onclick="switchView('card')">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                    <button class="view-toggle-btn" id="view-list" onclick="switchView('list')">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2" 
+                            type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-sort"></i>排序
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="?sort=title&order=asc{% if current_folder %}&folder={{ current_folder.id }}{% endif %}{% if tag_filter %}&tag={{ tag_filter }}{% endif %}">文件名(A-Z)</a></li>
+                        <li><a class="dropdown-item" href="?sort=title&order=desc{% if current_folder %}&folder={{ current_folder.id }}{% endif %}{% if tag_filter %}&tag={{ tag_filter }}{% endif %}">文件名(Z-A)</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="?sort=create_time&order=desc{% if current_folder %}&folder={{ current_folder.id }}{% endif %}{% if tag_filter %}&tag={{ tag_filter }}{% endif %}">创建时间(新到旧)</a></li>
+                        <li><a class="dropdown-item" href="?sort=create_time&order=asc{% if current_folder %}&folder={{ current_folder.id }}{% endif %}{% if tag_filter %}&tag={{ tag_filter }}{% endif %}">创建时间(旧到新)</a></li>
+                        <li><a class="dropdown-item" href="?sort=update_time&order=desc{% if current_folder %}&folder={{ current_folder.id }}{% endif %}{% if tag_filter %}&tag={{ tag_filter }}{% endif %}">修改时间(新到旧)</a></li>
+                        <li><a class="dropdown-item" href="?sort=update_time&order=asc{% if current_folder %}&folder={{ current_folder.id }}{% endif %}{% if tag_filter %}&tag={{ tag_filter }}{% endif %}">修改时间(旧到新)</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        {% if folders %}
+        <div class="folders-section">
+            <h5 class="folders-title"><i class="fas fa-folder"></i> 文件夹</h5>
+            <div class="folders-grid">
+                {% for folder in folders %}
+                <div class="folder-card">
+                    <div class="folder-header">
+                        <div class="folder-name" onclick="window.location.href='?folder={{ folder.id }}'">
+                            <i class="fas fa-folder folder-icon"></i>
+                            <span>{{ folder.name }}</span>
+                        </div>
+                        <div class="folder-actions">
+                            <div class="simple-dropdown">
+                                <button class="folder-action-btn" type="button" 
+                                        onclick="toggleSimpleMenu(event, 'menu-{{ folder.id }}')">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div class="simple-dropdown-menu" id="menu-{{ folder.id }}">
+                                    <button class="simple-dropdown-item" onclick="renameFolderDirect({{ folder.id }})">
+                                        <i class="fas fa-edit mr-2 text-primary"></i>重命名
+                                    </button>
+                                    <button class="simple-dropdown-item danger" onclick="deleteFolderDirect({{ folder.id }})">
+                                        <i class="fas fa-trash mr-2"></i>删除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="folder-date">{{ folder.create_time|date:"Y-m-d" }}</div>
+
+                    <div class="modal fade" id="rename-folder-modal-{{ folder.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">重命名文件夹</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form action="{% url 'rename_folder' folder.id %}" method="post">
+                                    {% csrf_token %}
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">文件夹名称</label>
+                                            <input type="text" class="form-control" name="folder_name" 
+                                                   value="{{ folder.name }}" required>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                        <button type="submit" class="btn btn-primary">确定</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="documents-grid" id="documents-container">
+            {% for document in documents %}
+            <div class="document-card" id="doc-card-{{ document.id }}">
+                <div class="document-header">
+                    <input type="checkbox" class="document-checkbox" id="doc-{{ document.id }}" value="{{ document.id }}"
+                           onchange="updateBatchDeleteButton()">
+                    <div class="document-title" title="{{ document.title }}" 
+                         onclick="window.location.href='{% url 'document_detail' document_id=document.id %}'">
+                        {{ document.title }}
+                    </div>
+                </div>
+                
+                <div class="document-meta">
+                    <div class="document-meta-item">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>{{ document.update_time|date:"Y-m-d H:i" }}</span>
+                    </div>
+                </div>
+                
+                {% if document.tags %}
+                <div class="document-tags">
+                    {% for tag in document.get_tags_list %}
+                    <span class="document-tag">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="dropdown document-actions">
+                    <button class="document-extension" type="button" id="docDropdown{{ document.id }}" 
+                            data-bs-toggle="dropdown" aria-expanded="false">.md</button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="docDropdown{{ document.id }}">
+                        <li><a class="dropdown-item py-2 px-3" href="{% url 'edit_document' document_id=document.id %}">
+                            <i class="fas fa-edit mr-2 text-primary"></i>编辑</a></li>
+                        <li><a class="dropdown-item py-2 px-3" href="{% url 'document_detail' document_id=document.id %}">
+                            <i class="fas fa-eye mr-2 text-info"></i>预览</a></li>
+                        <li><button class="dropdown-item py-2 px-3" onclick="exportDoc({{ document.id }}, '{{ document.title|escapejs }}')">
+                            <i class="fas fa-download mr-2 text-secondary"></i>导出</button></li>
+                        <li><button class="dropdown-item py-2 px-3" onclick="shareDoc({{ document.id }})">
+                            <i class="fas fa-share-alt mr-2 text-warning"></i>分享</button></li>
+                        <li><button class="dropdown-item py-2 px-3" onclick="renameDoc({{ document.id }}, '{{ document.title|escapejs }}')">
+                            <i class="fas fa-file-edit mr-2 text-success"></i>重命名</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item py-2 px-3 text-danger" onclick="deleteDoc({{ document.id }}, '{{ document.title|escapejs }}')">
+                            <i class="fas fa-trash mr-2"></i>删除</button></li>
+                    </ul>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3 class="empty-state-title">暂无文档</h3>
+                <p class="empty-state-desc">点击上方按钮创建新文档或导入文件</p>
+                {% if tag_filter %}
+                <a href="{% url 'my_documents' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left mr-1"></i>清除标签筛选
+                </a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <div class="drawer-overlay" id="tool-drawer" onclick="closeToolDrawer()">
+        <div class="drawer-panel" onclick="event.stopPropagation()">
+            <div class="drawer-header">
+                <h3 class="drawer-title">
+                    <i class="fas fa-wrench"></i> 工具面板
+                </h3>
+                <button class="drawer-close-btn" onclick="closeToolDrawer()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="drawer-content">
+                <div class="curl-tool-section">
+                    <div class="label-with-action">
+                        <label class="curl-tool-label">
+                            <i class="fas fa-terminal"></i> Curl 命令
+                        </label>
+                        <button class="btn-clear" onclick="clearCurlInput()">清除</button>
+                    </div>
+                    <textarea id="curl-input" class="curl-tool-textarea" rows="5"
+                        placeholder="curl -X POST https://api.example.com&#10;    -H 'Content-Type: application/json'&#10;    -d '{\"key\": \"value\"}'"></textarea>
+                </div>
+
+                <button type="button" class="btn-convert" onclick="convertCurlToPython()" id="convert-btn">
+                    <i class="fas fa-exchange-alt"></i> 转换为 Python 代码
+                </button>
+
+                <div class="curl-tool-section">
+                    <div class="label-with-action">
+                        <label class="curl-tool-label">
+                            <i class="fas fa-file-code"></i> Python 代码
+                        </label>
+                        <button class="btn-clear" onclick="clearPythonOutput()">清除</button>
+                    </div>
+                    <textarea id="python-output" class="curl-tool-textarea" rows="8" readonly
+                        placeholder="转换后的 Python 代码将显示在这里..."></textarea>
+                </div>
+
+                <button type="button" class="btn-copy" onclick="copyPythonCode()">
+                    <i class="fas fa-copy"></i> 复制代码
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+</div>
+
+<div class="modal fade" id="import-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="fas fa-upload"></i> 导入文件
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% csrf_token %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h6 class="font-semibold text-gray-700 mb-3">导入单个文件</h6>
+                        <div class="import-drop-zone" id="single-file-drop">
+                            <div class="flex flex-col items-center">
+                                <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                                    <i class="fas fa-file-upload text-2xl text-primary"></i>
+                                </div>
+                                <p class="text-gray-600 mb-2">点击或拖拽文件到此处</p>
+                                <input type="file" id="single-file-input" accept=".md,.txt,.html,.htm,.docx,.xlsx,.pptx,.pdf" class="d-none">
+                                <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('single-file-input').click()">
+                                    <i class="fas fa-search mr-1"></i>选择文件
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h6 class="font-semibold text-gray-700 mb-3">导入文件夹</h6>
+                        <div class="import-drop-zone" id="folder-drop">
+                            <div class="flex flex-col items-center">
+                                <div class="w-14 h-14 rounded-full bg-info/10 flex items-center justify-center mb-3">
+                                    <i class="fas fa-folder-open text-2xl text-info"></i>
+                                </div>
+                                <p class="text-gray-600 mb-2">点击或拖拽文件夹到此处</p>
+                                <input type="file" id="folder-input" webkitdirectory directory class="d-none">
+                                <button type="button" class="btn btn-info btn-sm" onclick="document.getElementById('folder-input').click()">
+                                    <i class="fas fa-folder-open mr-1"></i>选择文件夹
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-2">支持: .md .txt .html .htm .docx .xlsx .pptx .pdf</small>
+                    </div>
+                </div>
+
+                <div id="import-progress" class="d-none mt-4">
+                    <div class="progress rounded-lg overflow-hidden">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 100%"></div>
+                    </div>
+                    <p class="text-center mt-2 text-gray-600" id="import-status">正在导入...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="create-folder-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="fas fa-folder-plus"></i> 新建文件夹
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'create_folder' %}{% if current_folder %}?next=my_documents&folder={{ current_folder.id }}{% else %}?next=my_documents{% endif %}" method="post">
+                {% csrf_token %}
+                {% if current_folder %}
+                <input type="hidden" name="parent_folder" value="{{ current_folder.id }}">
+                {% endif %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label font-medium">文件夹名称</label>
+                        <input type="text" class="form-control" name="folder_name" placeholder="请输入文件夹名称" required>
+                    </div>
+                    {% if current_folder %}
+                    <p class="text-sm text-gray-500">将在 "{{ current_folder.name }}" 文件夹下创建</p>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="share-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="fas fa-share-alt"></i> 分享文档
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-4">
+                    <label class="form-label font-medium">分享链接</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="share-link" readonly value="" placeholder="点击下方按钮生成分享链接">
+                        <button class="btn btn-primary" onclick="copyShareLink()">
+                            <i class="fas fa-copy"></i> 复制
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-1">复制链接后，他人可通过此链接下载文档</small>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label font-medium">有效期</label>
+                    <select class="form-select" id="share-expire">
+                        <option value="1">1天</option>
+                        <option value="7">7天</option>
+                        <option value="30">30天</option>
+                        <option value="0" selected>永久有效</option>
+                    </select>
+                </div>
+                <div class="d-grid">
+                    <button class="btn btn-success" onclick="generateShareLink()">
+                        <i class="fas fa-link me-2"></i>生成分享链接
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="export-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="fas fa-download"></i> 导出文档
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-center mb-4 text-gray-600">选择导出格式：</p>
+                <div class="space-y-3">
+                    <button class="btn btn-primary w-full py-3 flex items-center justify-center gap-2" onclick="doExport('md')">
+                        <i class="fas fa-file-alt text-lg"></i>
+                        <div class="text-left">
+                            <div class="font-medium">Markdown</div>
+                            <div class="text-xs text-white/80">.md - 原始Markdown文件</div>
+                        </div>
+                    </button>
+                    <button class="btn btn-success w-full py-3 flex items-center justify-center gap-2" onclick="doExport('html')">
+                        <i class="fas fa-file-code text-lg"></i>
+                        <div class="text-left">
+                            <div class="font-medium">HTML</div>
+                            <div class="text-xs text-white/80">.html - 带样式的HTML文件</div>
+                        </div>
+                    </button>
+                    <button class="btn btn-danger w-full py-3 flex items-center justify-center gap-2" onclick="doExport('pdf')">
+                        <i class="fas fa-file-pdf text-lg"></i>
+                        <div class="text-left">
+                            <div class="font-medium">PDF</div>
+                            <div class="text-xs text-white/80">.pdf - PDF格式文件</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rename-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="fas fa-file-edit"></i> 重命名文档
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label font-medium">新文件名</label>
+                    <input type="text" class="form-control" id="rename-input" placeholder="请输入新的文件名">
+                    <small class="text-muted d-block mt-1">文件名不需要包含 .md 扩展名</small>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" onclick="doRename()">
+                        <i class="fas fa-check me-2"></i>确认重命名
+                    </button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>取消
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentView = 'card';
+let renameDocumentId = null;
+let exportDocumentId = null;
+let exportDocumentTitle = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search-input');
+    
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            searchInput.focus();
+        }
+    });
+
+    initHoverColors();
+});
+
+function initHoverColors() {
+    const folderCards = document.querySelectorAll('.folder-card');
+    const docCards = document.querySelectorAll('.document-card');
+    
+    folderCards.forEach((card, index) => {
+        const hue = (index * 60 + 45) % 360;
+        card.style.setProperty('--hover-color', `hsla(${hue}, 70%, 85%, 0.5)`);
+        card.style.setProperty('--hover-border', `hsla(${hue}, 70%, 60%, 0.5)`);
+    });
+
+    docCards.forEach((card, index) => {
+        const hue = (index * 45 + 160) % 360;
+        card.style.setProperty('--hover-color', `hsla(${hue}, 60%, 90%, 0.6)`);
+        card.style.setProperty('--hover-border', `hsla(${hue}, 60%, 50%, 0.4)`);
+    });
+}
+
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.document-checkbox');
+    const selectAll = document.getElementById('select-all');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    updateBatchDeleteButton();
+}
+
+function updateBatchDeleteButton() {
+    const checkedBoxes = document.querySelectorAll('.document-checkbox:checked');
+    const batchDeleteBtn = document.getElementById('batch-delete-btn');
+    if (checkedBoxes.length > 0) {
+        batchDeleteBtn.classList.add('enabled');
+        batchDeleteBtn.disabled = false;
+    } else {
+        batchDeleteBtn.classList.remove('enabled');
+        batchDeleteBtn.disabled = true;
+    }
+}
+
+function switchView(view) {
+    if (view === currentView) return;
+    
+    const container = document.getElementById('documents-container');
+    const cardBtn = document.getElementById('view-card');
+    const listBtn = document.getElementById('view-list');
+    
+    if (view === 'card') {
+        container.classList.remove('documents-list');
+        container.classList.add('documents-grid');
+        cardBtn.classList.add('active');
+        listBtn.classList.remove('active');
+    } else {
+        container.classList.remove('documents-grid');
+        container.classList.add('documents-list');
+        cardBtn.classList.remove('active');
+        listBtn.classList.add('active');
+    }
+    
+    currentView = view;
+}
+
+function openToolDrawer() {
+    document.getElementById('tool-drawer').classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeToolDrawer() {
+    document.getElementById('tool-drawer').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast toast-${type}`;
+    toast.classList.add('show');
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+function convertCurlToPython() {
+    const curlInput = document.getElementById('curl-input').value.trim();
+    const pythonOutput = document.getElementById('python-output');
+    const convertBtn = document.getElementById('convert-btn');
+    
+    if (!curlInput) {
+        pythonOutput.value = '请输入curl命令';
+        return;
+    }
+    
+    convertBtn.disabled = true;
+    convertBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 转换中...';
+    
+    setTimeout(() => {
+        try {
+            const parsed = parseCurl(curlInput);
+            const pythonCode = generatePythonCode(parsed);
+            pythonOutput.value = pythonCode;
+            showToast('转换成功！');
+        } catch (error) {
+            pythonOutput.value = '转换失败：' + error.message;
+            showToast('转换失败，请检查命令格式', 'error');
+        }
+        
+        convertBtn.disabled = false;
+        convertBtn.innerHTML = '<i class="fas fa-exchange-alt"></i> 转换为 Python 代码';
+    }, 300);
+}
+
+function parseCurl(curl) {
+    const result = {
+        method: 'GET',
+        url: '',
+        headers: {},
+        data: null
+    };
+
+    const tokens = curl.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+
+    let i = 0;
+    while (i < tokens.length) {
+        const token = tokens[i].replace(/^['"]|['"]$/g, '');
+
+        if (token === 'curl') {
+            i++;
+            continue;
+        }
+
+        if (token === '-X' || token === '--request') {
+            result.method = tokens[++i].replace(/^['"]|['"]$/g, '').toUpperCase();
+            i++;
+            continue;
+        }
+
+        if (token === '-H' || token === '--header') {
+            const header = tokens[++i].replace(/^['"]|['"]$/g, '');
+            const colonIndex = header.indexOf(':');
+            if (colonIndex > 0) {
+                const headerName = header.substring(0, colonIndex).trim();
+                const headerValue = header.substring(colonIndex + 1).trim();
+                result.headers[headerName] = headerValue;
+            }
+            i++;
+            continue;
+        }
+
+        if (token === '-d' || token === '--data' || token === '--data-raw') {
+            result.data = tokens[++i].replace(/^['"]|['"]$/g, '');
+            if (!result.headers['Content-Type']) {
+                result.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
+            i++;
+            continue;
+        }
+
+        if (token === '-L' || token === '--location' || token === '--max-redirs' || token === '-A' || token === '--user-agent' || token === '-k' || token === '--insecure' || token === '-s' || token === '--silent' || token === '-o' || token === '--output' || token === '-v' || token === '--verbose' || token === '-I' || token === '--head' || token === '-x' || token === '--proxy' || token === '--connect-timeout' || token === '-m') {
+            i += 2;
+            continue;
+        }
+
+        if (token.startsWith('http://') || token.startsWith('https://') || token.startsWith("'http") || token.startsWith('"http')) {
+            result.url = token.replace(/^['"]|['"]$/g, '');
+            i++;
+            continue;
+        }
+
+        i++;
+    }
+
+    return result;
+}
+
+function generatePythonCode(parsed) {
+    let code = 'import requests\n\n';
+
+    if (parsed.url) {
+        code += `url = "${escapeString(parsed.url)}"\n\n`;
+    } else {
+        code += 'url = "https://api.example.com"\n\n';
+    }
+
+    if (Object.keys(parsed.headers).length > 0) {
+        code += 'headers = {\n';
+        for (const [key, value] of Object.entries(parsed.headers)) {
+            code += `    "${escapeString(key)}": "${escapeString(value)}",\n`;
+        }
+        code += '}\n\n';
+    }
+
+    if (parsed.data) {
+        if (parsed.headers['Content-Type'] && parsed.headers['Content-Type'].includes('application/json')) {
+            code += `data = ${parsed.data}\n\n`;
+            code += 'response = requests.post(url, json=data';
+        } else {
+            code += `data = ${JSON.stringify(parsed.data)}\n\n`;
+            code += 'response = requests.post(url, data=data';
+        }
+
+        if (Object.keys(parsed.headers).length > 0) {
+            code += ', headers=headers';
+        }
+    } else {
+        code += 'response = requests.get(url';
+        if (Object.keys(parsed.headers).length > 0) {
+            code += ', headers=headers';
+        }
+    }
+
+    code += ')\n\n';
+    code += 'print(response.status_code)\n';
+    code += 'print(response.text)';
+
+    return code;
+}
+
+function escapeString(str) {
+    return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
+function clearCurlInput() {
+    document.getElementById('curl-input').value = '';
+    document.getElementById('curl-input').focus();
+}
+
+function clearPythonOutput() {
+    document.getElementById('python-output').value = '';
+}
+
+function copyPythonCode() {
+    const pythonOutput = document.getElementById('python-output');
+    if (!pythonOutput.value || pythonOutput.value.includes('转换失败') || pythonOutput.value === '请输入curl命令') {
+        showToast('没有可复制的代码', 'error');
+        return;
+    }
+
+    navigator.clipboard.writeText(pythonOutput.value).then(() => {
+        showToast('代码已复制到剪贴板！');
+    }).catch(() => {
+        pythonOutput.select();
+        document.execCommand('copy');
+        showToast('代码已复制到剪贴板！');
+    });
+}
+
+function batchDeleteDocuments() {
+    const checkedBoxes = document.querySelectorAll('.document-checkbox:checked');
+    const documentIds = Array.from(checkedBoxes).map(box => box.value);
+    
+    if (documentIds.length === 0) {
+        return;
+    }
+    
+    if (confirm(`确定要删除选中的 ${documentIds.length} 个文档吗？删除后可在回收站恢复。`)) {
+        fetch('{% url "batch_delete_documents" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ document_ids: documentIds })
+        }).then(response => {
+            window.location.reload();
+        }).catch(error => {
+            showToast('删除失败: ' + error.message, 'error');
+        });
+    }
+}
+
+function deleteFolder(folderId, folderName) {
+    if (confirm(`确定要删除文件夹 "${folderName}" 吗？删除后该文件夹及其所有内容将被移到回收站。`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{% url 'delete_folder' 0 %}`.replace('0', folderId);
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrfmiddlewaretoken';
+        csrfToken.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        form.appendChild(csrfToken);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function toggleSimpleMenu(event, menuId) {
+    event.stopPropagation();
+    const menu = document.getElementById(menuId);
+    if (menu) {
+        closeAllSimpleMenus();
+        menu.classList.toggle('active');
+    }
+}
+
+function closeAllSimpleMenus() {
+    document.querySelectorAll('.simple-dropdown-menu.active').forEach(function(el) {
+        el.classList.remove('active');
+    });
+}
+
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.simple-dropdown')) {
+        closeAllSimpleMenus();
+    }
+});
+
+function renameFolderDirect(folderId) {
+    closeAllSimpleMenus();
+    showCustomModal(folderId);
+}
+
+function deleteFolderDirect(folderId) {
+    closeAllSimpleMenus();
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/folder/' + folderId + '/delete/';
+    
+    const csrfToken = document.createElement('input');
+    csrfToken.type = 'hidden';
+    csrfToken.name = 'csrfmiddlewaretoken';
+    csrfToken.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    form.appendChild(csrfToken);
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function exportDoc(documentId, title) {
+    exportDocumentId = documentId;
+    exportDocumentTitle = title;
+    const modal = new bootstrap.Modal(document.getElementById('export-modal'));
+    modal.show();
+}
+
+function doExport(format) {
+    window.location.href = `/export-document/${exportDocumentId}/?format=${format}`;
+    const modal = bootstrap.Modal.getInstance(document.getElementById('export-modal'));
+    modal.hide();
+}
+
+function shareDoc(documentId) {
+    exportDocumentId = documentId;
+    const modal = new bootstrap.Modal(document.getElementById('share-modal'));
+    document.getElementById('share-link').value = '';
+    modal.show();
+}
+
+function generateShareLink() {
+    const expireDays = document.getElementById('share-expire').value;
+    
+    fetch(`/share-document/${exportDocumentId || 0}/?expire_days=${expireDays}`).then(response => response.json()).then(data => {
+        if (data.share_url) {
+            document.getElementById('share-link').value = data.share_url;
+        } else if (data.message) {
+            alert(data.message);
+        }
+    }).catch(error => {
+        alert('生成分享链接失败: ' + error.message);
+    });
+}
+
+function copyShareLink() {
+    const shareLink = document.getElementById('share-link');
+    if (!shareLink.value) {
+        alert('请先生成分享链接');
+        return;
+    }
+    
+    navigator.clipboard.writeText(shareLink.value).then(() => {
+        alert('链接已复制到剪贴板！');
+    });
+}
+
+function renameDoc(documentId, title) {
+    renameDocumentId = documentId;
+    document.getElementById('rename-input').value = title;
+    const modal = new bootstrap.Modal(document.getElementById('rename-modal'));
+    modal.show();
+}
+
+function doRename() {
+    const newTitle = document.getElementById('rename-input').value.trim();
+    
+    if (!newTitle) {
+        alert('请输入新文件名');
+        return;
+    }
+    
+    fetch(`/rename-document/${renameDocumentId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ title: newTitle })
+    }).then(response => {
+        window.location.reload();
+    }).catch(error => {
+        alert('重命名失败: ' + error.message);
+    });
+}
+
+function deleteDoc(documentId, title) {
+    if (confirm(`确定要删除文档 "${title}" 吗？删除后可在回收站恢复。`)) {
+        fetch(`/delete-document/${documentId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        }).then(response => {
+            window.location.reload();
+        }).catch(error => {
+            alert('删除失败: ' + error.message);
+        });
+    }
+}
+
+let currentRenameFolderId = null;
+
+function showCustomModal(folderId) {
+    currentRenameFolderId = folderId;
+    document.getElementById('custom-modal-overlay').classList.add('show');
+    document.getElementById('custom-modal-input').focus();
+}
+
+function closeCustomModal() {
+    document.getElementById('custom-modal-overlay').classList.remove('show');
+    document.getElementById('custom-modal-input').value = '';
+    currentRenameFolderId = null;
+}
+
+function submitRename() {
+    const newName = document.getElementById('custom-modal-input').value.trim();
+    if (!newName) {
+        showToast('请输入文件夹名称', 'error');
+        return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/folder/' + currentRenameFolderId + '/rename/';
+    
+    const csrfToken = document.createElement('input');
+    csrfToken.type = 'hidden';
+    csrfToken.name = 'csrfmiddlewaretoken';
+    csrfToken.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    form.appendChild(csrfToken);
+    
+    const nameInput = document.createElement('input');
+    nameInput.type = 'hidden';
+    nameInput.name = 'folder_name';
+    nameInput.value = newName;
+    form.appendChild(nameInput);
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('custom-modal-overlay').classList.contains('show')) {
+        closeCustomModal();
+    }
+});
+</script>
+
+<div class="custom-modal-overlay" id="custom-modal-overlay" onclick="closeCustomModal()">
+    <div class="custom-modal" onclick="event.stopPropagation()">
+        <div class="custom-modal-header">
+            <h3 class="custom-modal-title">重命名文件夹</h3>
+            <button class="custom-modal-close" onclick="closeCustomModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="custom-modal-body">
+            <label class="custom-modal-label">文件夹名称</label>
+            <input type="text" id="custom-modal-input" class="custom-modal-input" placeholder="请输入新的文件夹名称">
+        </div>
+        <div class="custom-modal-footer">
+            <button class="custom-modal-btn cancel" onclick="closeCustomModal()">取消</button>
+            <button class="custom-modal-btn confirm" onclick="submitRename()">确定</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

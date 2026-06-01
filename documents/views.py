@@ -715,3 +715,99 @@ def batch_delete_permanently_view(request):
 
 def help_view(request):
     return render(request, 'documents/help.html')
+
+@login_required
+def word_to_pdf_view(request):
+    if request.method == 'POST' and request.FILES.get('word_file'):
+        word_file = request.FILES['word_file']
+        filename = os.path.splitext(word_file.name)[0]
+        
+        try:
+            # 读取 Word 文档内容
+            from docx import Document
+            doc = Document(word_file)
+            content = '\n'.join([paragraph.text for paragraph in doc.paragraphs])
+            
+            # 使用 reportlab 创建 PDF
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.enums import TA_CENTER, TA_LEFT
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib import colors
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+            
+            result = BytesIO()
+            
+            # 注册中文字体
+            try:
+                # 尝试注册系统中文字体
+                font_path = 'C:/Windows/Fonts/simsun.ttc'  # 宋体
+                pdfmetrics.registerFont(TTFont('SimSun', font_path))
+                font_name = 'SimSun'
+            except:
+                try:
+                    font_path = 'C:/Windows/Fonts/msyh.ttc'  # 微软雅黑
+                    pdfmetrics.registerFont(TTFont('MicrosoftYaHei', font_path))
+                    font_name = 'MicrosoftYaHei'
+                except:
+                    font_name = 'Helvetica'
+            
+            # 设置文档
+            doc = SimpleDocTemplate(result, pagesize=A4, leftMargin=50, rightMargin=50, topMargin=50, bottomMargin=50)
+            styles = getSampleStyleSheet()
+            
+            # 添加自定义中文样式
+            chinese_style = ParagraphStyle(
+                'ChineseStyle',
+                parent=styles['Normal'],
+                fontName=font_name,
+                fontSize=12,
+                leading=20,
+                alignment=TA_LEFT,
+                textColor=colors.black
+            )
+            
+            title_style = ParagraphStyle(
+                'ChineseTitle',
+                parent=styles['Heading1'],
+                fontName=font_name,
+                fontSize=18,
+                leading=24,
+                alignment=TA_CENTER,
+                textColor=colors.darkblue,
+                borderColor=colors.HexColor('#667eea'),
+                borderWidth=2,
+                borderPadding=10,
+                backColor=colors.HexColor('#f0f4ff')
+            )
+            
+            # 准备内容
+            story = []
+            story.append(Paragraph(filename, title_style))
+            story.append(Spacer(1, 20))
+            
+            # 将内容分段
+            paragraphs = content.split('\n')
+            for para in paragraphs:
+                if para.strip():
+                    story.append(Paragraph(para.strip(), chinese_style))
+                    story.append(Spacer(1, 10))
+            
+            # 生成 PDF
+            doc.build(story)
+            
+            response = HttpResponse(result.getvalue(), content_type='application/pdf')
+            # 处理中文文件名，使用 URL 编码
+            import urllib.parse
+            encoded_filename = urllib.parse.quote(f"{filename}.pdf", encoding='utf-8')
+            response['Content-Disposition'] = f'attachment; filename="{encoded_filename}"'
+            return response
+            
+        except ImportError as e:
+            messages.error(request, f'缺少必要的库: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'转换失败: {str(e)}')
+    
+    return redirect('my_documents')

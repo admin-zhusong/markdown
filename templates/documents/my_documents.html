@@ -1214,7 +1214,7 @@
                 <button type="button" class="btn-tertiary-custom" onclick="openToolDrawer()">
                     <i class="fas fa-wrench"></i> 工具
                 </button>
-            </div>
+                </div>
         </div>
 
         {% if folder_path or current_folder %}
@@ -1462,7 +1462,25 @@
                 <button type="button" class="btn-copy" onclick="copyPythonCode()">
                     <i class="fas fa-copy"></i> 复制代码
                 </button>
-            </div>
+            
+                <div class="word-to-pdf-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                    <div class="label-with-action">
+                        <label class="curl-tool-label">
+                            <i class="fas fa-file-word"></i> Word 转 PDF
+                        </label>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-3">上传 Word 文档（.doc 或 .docx），自动转换为 PDF 下载</p>
+                    <form id="word-to-pdf-drawer-form" action="{% url 'word_to_pdf' %}" method="post" enctype="multipart/form-data" style="margin-bottom: 12px;">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <input type="file" class="form-control" name="word_file" accept=".doc,.docx" required style="padding: 8px;">
+                        </div>
+                        <button type="submit" class="btn-convert" style="width: 100%;">
+                            <i class="fas fa-file-pdf"></i> 转换为 PDF
+                        </button>
+                    </form>
+                </div>
+</div>
         </div>
     </div>
 
@@ -1557,6 +1575,7 @@
         </div>
     </div>
 </div>
+
 
 <div class="modal fade" id="share-modal" tabindex="-1">
     <div class="modal-dialog">

@@ -26,4 +26,5 @@ urlpatterns = [
     path('share-document/<int:document_id>/', views.share_api, name='share_document'),
     path('api/rename/<int:document_id>/', views.rename_api, name='rename_api'),
     path('download/<str:share_token>/', views.download_view, name='download'),
+    path('word-to-pdf/', views.word_to_pdf_view, name='word_to_pdf'),
 ]

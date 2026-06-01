@@ -93,3 +93,5 @@ LOGOUT_REDIRECT_URL = '/'
 SESSION_COOKIE_AGE = 604800
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
